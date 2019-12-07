@@ -3,6 +3,7 @@ import classnames from "classnames";
 import Loading from "components/Loading"
 import Panel from "components/Panel";
 import axios from "axios";
+import { setInterview } from "helpers/reducers";
 
 import { getTotalInterviews,
  getLeastPopularTimeSlot,
@@ -14,7 +15,7 @@ const data = [
   {
     id: 1,
     label: "Total Interviews",
-    getValue: getTotalInterviews
+    getValue: getTotalInterviews   //total interviews
   },
   {
     id: 2,
@@ -29,7 +30,7 @@ const data = [
   {
     id: 4,
     label: "Interviews Per Day",
-    getValue: getInterviewsPerDay
+    getValue: getInterviewsPerDay  //average interviews per day
   }
 ];
 
@@ -68,14 +69,27 @@ class Dashboard extends Component {
       });
     });
 
+    this.socket = new WebSocket(process.env.REACT_APP_WEBSOCKET_URL);
+
+    this.socket.onmessage = event => {
+      const data = JSON.parse(event.data);
+      if (typeof data === "object" && data.type === "SET_INTERVIEW") {
+        this.setState(previousState =>
+          setInterview(previousState, data.id, data.interview)
+        );
+      }
+    };
   };
 
   componentDidUpdate(previousProps, previousState) {
     if (previousState.focused !== this.state.focused) {
       localStorage.setItem("focused", JSON.stringify(this.state.focused));
     }
-    console.log(this.state)
   };
+
+  componentWillUnmount() {
+    this.socket.close();
+  }
 
   selectPanel = (id) => {
     this.setState(previousState => ({
@@ -93,7 +107,7 @@ class Dashboard extends Component {
               return (
               <Panel 
                 key = {panel.id}
-                label = {panel.lable}
+                label = {panel.label}
                 value = {panel.getValue(this.state)}
                 onSelect={ event => this.selectPanel(panel.id) }
               />)
